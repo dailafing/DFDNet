@@ -138,7 +138,7 @@ def obtain_inputs(img_path, Landmark_path, img_name):
     
 if __name__ == '__main__':
     starttime = time()
-    print('Start Time: {}'.format(starttime))
+    print('Start Time: {}'.format(round(starttime, 2)))
 
     opt = TestOptions().parse()
     opt.nThreads = 1   # test code only supports nThreads = 1
@@ -189,12 +189,14 @@ if __name__ == '__main__':
 
     ImgPaths = make_dataset(TestImgPath)
     for i, ImgPath in enumerate(ImgPaths):
+        iTimeStart = time()
         ImgName = os.path.split(ImgPath)[-1]
-        print('Crop and Align {} image'.format(ImgName))
+        print('Crop and Align "{}" image. (Started at: {})'.format(ImgName, ctime(iTimeStart)))
         SavePath = os.path.join(SaveCropPath,ImgName)
         SaveInput = os.path.join(SaveInputPath,ImgName)
         SaveParam = os.path.join(SaveParamPath, ImgName+'.npy')
         align_and_save(ImgPath, SavePath, SaveInput, SaveParam, UpScaleWhole)
+        print('...Done with "{}" image. (It took: {} seconds)'.format(ImgName, round(time() - iTimeStart, 2)))
         
     print('Step 1 took {} seconds. Total so far: {} seconds'.format(round(time() - stepOneStartTime, 2), round(time() - starttime, 2)))
 
@@ -218,8 +220,9 @@ if __name__ == '__main__':
         os.makedirs(SaveLandmarkPath)
     ImgPaths = make_dataset(SaveCropPath)
     for i,ImgPath in enumerate(ImgPaths):
+        iTimeStart = time()
         ImgName = os.path.split(ImgPath)[-1]
-        print('Detecting {}'.format(ImgName))
+        print('Detecting "{}". Started at: {}'.format(ImgName, ctime(iTimeStart)))
         Img = io.imread(ImgPath)
         try:
             PredsAll = FD.get_landmarks(Img)
@@ -241,6 +244,7 @@ if __name__ == '__main__':
         AddLength = np.sqrt(np.sum(np.power(preds[27][0:2]-preds[33][0:2],2)))
         SaveName = ImgName+'.txt'
         np.savetxt(os.path.join(SaveLandmarkPath,SaveName),preds[:,0:2],fmt='%.3f')
+        print('...Done Detecting "{}" image. (It took: {} seconds)'.format(ImgName, round(time() - iTimeStart, 2)))
         
     print('Step 2 took {} seconds. Total so far: {} seconds'.format(round(time() - stepTwoStartTime, 2), round(time() - starttime, 2)))
 
@@ -264,8 +268,9 @@ if __name__ == '__main__':
     ImgPaths = make_dataset(SaveCropPath)
     total = 0
     for i, ImgPath in enumerate(ImgPaths):
+        iTimeStart = time()
         ImgName = os.path.split(ImgPath)[-1]
-        print('Restoring {}'.format(ImgName))
+        print('Restoring "{}". Start at: {}'.format(ImgName, ctime(iTimeStart)))
         torch.cuda.empty_cache()
         data = obtain_inputs(SaveCropPath, SaveLandmarkPath, ImgName)
         if data == 0:
@@ -281,6 +286,7 @@ if __name__ == '__main__':
             print('\t################ Error in enhancing this image: {}'.format(str(e)))
             print('\t################ continue...')
             continue
+        print('...Done Restoring "{}" image. (It took: {} seconds)'.format(ImgName, round(time() - iTimeStart, 2)))
             
     print('Step 3 took {} seconds. Total so far: {} seconds'.format(round(time() - stepThreeStartTime, 2), round(time() - starttime, 2)))
 
@@ -300,15 +306,19 @@ if __name__ == '__main__':
         os.makedirs(SaveFianlPath)
     ImgPaths = make_dataset(SaveRestorePath)
     for i,ImgPath in enumerate(ImgPaths):
+        iTimeStart = time()
         ImgName = os.path.split(ImgPath)[-1]
-        print('Final Restoring {}'.format(ImgName))
+        print('Final Restoring "{}". Started at: {}'.format(ImgName, ctime(iTimeStart)))
         WholeInputPath = os.path.join(TestImgPath,ImgName)
         FaceResultPath = os.path.join(SaveRestorePath, ImgName)
         ParamPath = os.path.join(SaveParamPath, ImgName+'.npy')
         SaveWholePath = os.path.join(SaveFianlPath, ImgName)
         reverse_align(WholeInputPath, FaceResultPath, ParamPath, SaveWholePath, UpScaleWhole)
+        print('...Done Final Restoring "{}" image. (It took: {} seconds)'.format(ImgName, round(time() - iTimeStart, 2)))
     
-    print('Step 4 took {} seconds. Total so far: {} seconds'.format(round(time() - stepFourStartTime, 2), round(time() - starttime, 2)))
+    print('Step 4 took {} seconds.'.format(round(time() - stepFourStartTime, 2)))
     
     print('\nAll results are saved in {} \n'.format(ResultsDir))
+    
+    print('Total Job Time: {}'.format(round(time() - starttime, 2)))
     
