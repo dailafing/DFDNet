@@ -6,6 +6,8 @@ from util.visualizer import save_crop
 from util import html
 import numpy as np
 import math
+import time
+from time import time, ctime
 from PIL import Image
 import torchvision.transforms as transforms
 import torch
@@ -135,6 +137,9 @@ def obtain_inputs(img_path, Landmark_path, img_name):
     return {'A':A.unsqueeze(0), 'C':C.unsqueeze(0), 'A_paths': A_paths,'Part_locations': Part_locations}
     
 if __name__ == '__main__':
+    starttime = time()
+    print('Start Time: {}'.format(starttime))
+
     opt = TestOptions().parse()
     opt.nThreads = 1   # test code only supports nThreads = 1
     opt.batchSize = 1  # test code only supports batchSize = 1
@@ -155,6 +160,8 @@ if __name__ == '__main__':
     UpScaleWhole = opt.upscale_factor
 
     print('\n###################### Now Running the X {} task ##############################'.format(UpScaleWhole))
+    
+    print('Warm Up took: {} seconds'.format(round(time() - starttime, 2)))
 
     #######################################################################
     ###########Step 1: Crop and Align Face from the whole Image ###########
@@ -162,6 +169,9 @@ if __name__ == '__main__':
     print('\n###############################################################################')
     print('####################### Step 1: Crop and Align Face ###########################')
     print('###############################################################################\n')
+    
+    stepOneStartTime = time()
+    print('Step 1 Start Time: {}'.format(ctime(stepOneStartTime)))
     
     detector = dlib.cnn_face_detection_model_v1('./packages/mmod_human_face_detector.dat')
     sp = dlib.shape_predictor('./packages/shape_predictor_5_face_landmarks.dat')
@@ -185,6 +195,8 @@ if __name__ == '__main__':
         SaveInput = os.path.join(SaveInputPath,ImgName)
         SaveParam = os.path.join(SaveParamPath, ImgName+'.npy')
         align_and_save(ImgPath, SavePath, SaveInput, SaveParam, UpScaleWhole)
+        
+    print('Step 1 took {} seconds. Total so far: {} seconds'.format(round(time() - stepOneStartTime, 2), round(time() - starttime, 2)))
 
     #######################################################################
     ####### Step 2: Face Landmark Detection from the Cropped Image ########
@@ -192,6 +204,9 @@ if __name__ == '__main__':
     print('\n###############################################################################')
     print('####################### Step 2: Face Landmark Detection #######################')
     print('###############################################################################\n')
+    
+    stepTwoStartTime = time()
+    print('Step 2 Start Time: {}'.format(ctime(stepTwoStartTime)))
     
     SaveLandmarkPath = os.path.join(ResultsDir,'Step2_Landmarks')
     if len(opt.gpu_ids) > 0:
@@ -226,6 +241,8 @@ if __name__ == '__main__':
         AddLength = np.sqrt(np.sum(np.power(preds[27][0:2]-preds[33][0:2],2)))
         SaveName = ImgName+'.txt'
         np.savetxt(os.path.join(SaveLandmarkPath,SaveName),preds[:,0:2],fmt='%.3f')
+        
+    print('Step 2 took {} seconds. Total so far: {} seconds'.format(round(time() - stepTwoStartTime, 2), round(time() - starttime, 2)))
 
     #######################################################################
     ####################### Step 3: Face Restoration ######################
@@ -234,6 +251,9 @@ if __name__ == '__main__':
     print('\n###############################################################################')
     print('####################### Step 3: Face Restoration ##############################')
     print('###############################################################################\n')
+    
+    stepThreeStartTime = time()
+    print('Step 3 Start Time: {}'.format(ctime(stepThreeStartTime)))
 
     SaveRestorePath = os.path.join(ResultsDir,'Step3_RestoreCropFace')# Only Face Results
     if not os.path.exists(SaveRestorePath):
@@ -261,6 +281,8 @@ if __name__ == '__main__':
             print('\t################ Error in enhancing this image: {}'.format(str(e)))
             print('\t################ continue...')
             continue
+            
+    print('Step 3 took {} seconds. Total so far: {} seconds'.format(round(time() - stepThreeStartTime, 2), round(time() - starttime, 2)))
 
     #######################################################################
     ############ Step 4: Paste the Results to the Input Image #############
@@ -268,7 +290,10 @@ if __name__ == '__main__':
     
     print('\n###############################################################################')
     print('############### Step 4: Paste the Restored Face to the Input Image ############')
-    print('###############################################################################\n')
+    print('###############################################################################\n') 
+    
+    stepFourStartTime = time()
+    print('Step 3 Start Time: {}'.format(ctime(stepFourStartTime)))
 
     SaveFianlPath = os.path.join(ResultsDir,'Step4_FinalResults')
     if not os.path.exists(SaveFianlPath):
@@ -282,6 +307,8 @@ if __name__ == '__main__':
         ParamPath = os.path.join(SaveParamPath, ImgName+'.npy')
         SaveWholePath = os.path.join(SaveFianlPath, ImgName)
         reverse_align(WholeInputPath, FaceResultPath, ParamPath, SaveWholePath, UpScaleWhole)
-
+    
+    print('Step 4 took {} seconds. Total so far: {} seconds'.format(round(time() - stepFourStartTime, 2), round(time() - starttime, 2)))
+    
     print('\nAll results are saved in {} \n'.format(ResultsDir))
     
